@@ -43,6 +43,7 @@ set(APP_COMPILER_FLAGS
         "${CMAKE_CURRENT_SOURCE_DIR}/src/config.xscope"
         "-target=XCORE-AI-EXPLORER"
         "-D__suppression_conf_h_exists__=1"
+        "-DPRINT_H=1" #Avoid clash with print.h from freertos
         )
 
 set(APP_SRCS
@@ -72,13 +73,13 @@ target_compile_options(${APP_NAME} PRIVATE ${APP_COMPILER_FLAGS})
 
 target_include_directories(${APP_NAME}
   PRIVATE ${APP_INCLUDES}
-  # PRIVATE ${VFE_INCLUDES_ALL}
+  PRIVATE ${VFE_INCLUDES_ALL}
   PRIVATE ${FREERTOS_INCLUDES_ALL}
 )
 
 target_sources(${APP_NAME}
     PRIVATE ${APP_SRCS}
-    # PRIVATE ${VFE_SRCS_ALL}
+    PRIVATE ${VFE_SRCS_ALL}
     PRIVATE ${FREERTOS_SRCS}
     )
 
@@ -88,5 +89,3 @@ target_link_options(${APP_NAME} PRIVATE ${APP_COMPILER_FLAGS})
 ## Set any additional flags only for C++
 set(CMAKE_CXX_FLAGS  "-std=c++11")
 
-## Register the application
-#XMOS_REGISTER_APP()
