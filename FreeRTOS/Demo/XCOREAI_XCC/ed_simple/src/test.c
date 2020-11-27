@@ -74,25 +74,25 @@ static uint32_t prvCheckTasks( int tile, uint32_t ulErrorFound );
 
 static void prvSetupHardware( int tile, chanend_t xTile0Chan, chanend_t xTile1Chan, chanend_t xTile2Chan, chanend_t xTile3Chan );
 
-int g_irq_id = 0;
-int32_t processed_mic_frame[VFE_FRAME_ADVANCE];
+int g_irq_id = -1;
+extern int32_t *g_processed_mic_frame_ptr;
 
-void bare_metal_task(chanend_t c_vfe){
+// void bare_metal_task(chanend_t c_vfe){
 
-    rtos_printf("bare metal task %u on core %u\n", get_local_tile_id(), get_logical_core_id());
-    unsigned count = 0;
+//     rtos_printf("bare metal task %u on core %u\n", get_local_tile_id(), get_logical_core_id());
+//     unsigned count = 0;
 
-    while(g_irq_id == 0);
-    int irq_id = g_irq_id;
+//     while(g_irq_id == 0);
+//     int irq_id = g_irq_id;
 
-    rtos_printf("xctask irq_id = %u, lc = %u\n", irq_id, get_logical_core_id());
+//     rtos_printf("xctask irq_id = %u, lc = %u\n", irq_id, get_logical_core_id());
 
-    while(1){
-        get_mic_frame(c_vfe, processed_mic_frame);
-        rtos_irq(get_logical_core_id(), irq_id);
-        count++;
-    }
-}
+//     while(1){
+//         get_mic_frame(c_vfe, processed_mic_frame);
+//         rtos_irq(get_logical_core_id(), irq_id);
+//         count++;
+//     }
+// }
 
 void vfe(chanend_t c_vfe){
     vfe_config_t vfe_config = {{0}};
@@ -115,6 +115,7 @@ void mytask( void *pvParameters ){
 
 void defferred_isr_task( void * pvParameter1, uint32_t ulParameter2 ){
     uint32_t peak_magnitude = 0;
+    int32_t * processed_mic_frame = g_processed_mic_frame_ptr;
     for(int idx = 0; idx < VFE_FRAME_ADVANCE; idx++){
         uint32_t magnitude = processed_mic_frame[idx] > 0 ? processed_mic_frame[idx] : -processed_mic_frame[idx];
         peak_magnitude = magnitude > peak_magnitude ? magnitude : peak_magnitude;
@@ -145,7 +146,11 @@ int freertos(int tile){
     g_irq_id = rtos_irq_register(my_isr, &a_val, my_isr_chan);
     rtos_printf( "irq_id = %d\n", g_irq_id);
 
-    rtos_irq_enable(1);
+    rtos_irq_enable(configNUM_CORES);
+
+    //Hack alert. It looks like rtos_irq.c makes assumptions about RTOS cores having a lower core_id than non-rtos
+    //This ensures that the other tasks fork and get assigned the lower logical core numbers
+    delay_milliseconds(2);
 
     /* All the tasks have been created - start the scheduler. */
     rtos_printf( "Starting Scheduler\n" );

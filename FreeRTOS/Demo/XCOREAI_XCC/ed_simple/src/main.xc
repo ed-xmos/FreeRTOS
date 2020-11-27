@@ -20,10 +20,11 @@ int main(void)
 		{
             chan c_vfe;
 			par {
+				// bare_metal_task(c_vfe);
                 vfe(c_vfe);
-				bare_metal_task(c_vfe);
 				freertos(1);
-			}
+            }
+
 		}
 	}
 	return 0;
