@@ -16,13 +16,13 @@ int main(void)
 {
 
 	par {
-		on tile[0]:
+		on tile[1]:
 		{
             chan c_vfe;
 			par {
                 vfe(c_vfe);
 				bare_metal_task(c_vfe);
-				freertos(0);
+				freertos(1);
 			}
 		}
 	}

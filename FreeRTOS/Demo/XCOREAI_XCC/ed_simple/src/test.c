@@ -5,6 +5,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include <xcore/chanend.h>
+#include <xclib.h>
 
 #include "limits.h"
 #include "testing_main.h"
@@ -74,6 +75,7 @@ static uint32_t prvCheckTasks( int tile, uint32_t ulErrorFound );
 static void prvSetupHardware( int tile, chanend_t xTile0Chan, chanend_t xTile1Chan, chanend_t xTile2Chan, chanend_t xTile3Chan );
 
 int g_irq_id = 0;
+int32_t processed_mic_frame[VFE_FRAME_ADVANCE];
 
 void bare_metal_task(chanend_t c_vfe){
 
@@ -85,7 +87,6 @@ void bare_metal_task(chanend_t c_vfe){
 
     rtos_printf("xctask irq_id = %u, lc = %u\n", irq_id, get_logical_core_id());
 
-    int32_t processed_mic_frame[VFE_FRAME_ADVANCE];
     while(1){
         get_mic_frame(c_vfe, processed_mic_frame);
         rtos_irq(get_logical_core_id(), irq_id);
@@ -113,11 +114,20 @@ void mytask( void *pvParameters ){
 }
 
 void defferred_isr_task( void * pvParameter1, uint32_t ulParameter2 ){
-    rtos_printf("Defferred ISR: val = %u, lc = %u\n", *(unsigned*)pvParameter1, get_logical_core_id());
+    uint32_t peak_magnitude = 0;
+    for(int idx = 0; idx < VFE_FRAME_ADVANCE; idx++){
+        uint32_t magnitude = processed_mic_frame[idx] > 0 ? processed_mic_frame[idx] : -processed_mic_frame[idx];
+        peak_magnitude = magnitude > peak_magnitude ? magnitude : peak_magnitude;
+    }
+    unsigned simple_log2 = 32 - clz(peak_magnitude);
+    for(int idx = 0; idx < simple_log2; idx++){
+        printchar('+');
+    }
+    printchar('\n');
 }
 
 void my_isr(void *data){
-    rtos_printf("MY_ISR! val = %u, lc = %u\n", *(unsigned*)data, get_logical_core_id());
+    // rtos_printf("MY_ISR! val = %u, lc = %u\n", *(unsigned*)data, get_logical_core_id());
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     xTimerPendFunctionCallFromISR(defferred_isr_task, data, 0, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
