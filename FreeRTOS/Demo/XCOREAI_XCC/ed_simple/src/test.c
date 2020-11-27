@@ -38,6 +38,9 @@
 #include "regtest.h"
 #include "timers.h"
 
+#include "voice_front_end.h"
+#include "voice_front_end_settings.h"
+
 void vParTestInitialiseXCORE( int tile, chanend_t xTile0Chan, chanend_t xTile1Chan, chanend_t xTile2Chan, chanend_t xTile3Chan );
 #define vParTestInitialise vParTestInitialiseXCORE
 
@@ -72,8 +75,7 @@ static void prvSetupHardware( int tile, chanend_t xTile0Chan, chanend_t xTile1Ch
 
 int g_irq_id = 0;
 
-void bare_metal_task(chanend_t c_vfe)
-{
+void bare_metal_task(chanend_t c_vfe){
 
     rtos_printf("bare metal task %u on core %u\n", get_local_tile_id(), get_logical_core_id());
     unsigned count = 0;
@@ -82,14 +84,26 @@ void bare_metal_task(chanend_t c_vfe)
     int irq_id = g_irq_id;
 
     rtos_printf("xctask irq_id = %u, lc = %u\n", irq_id, get_logical_core_id());
+
+    int32_t processed_mic_frame[VFE_FRAME_ADVANCE];
     while(1){
-        delay_milliseconds(700);
+        get_mic_frame(c_vfe, processed_mic_frame);
         rtos_irq(get_logical_core_id(), irq_id);
         count++;
     }
 }
 
+void vfe(chanend_t c_vfe){
+    vfe_config_t vfe_config = {{0}};
+    vfe_config.mic_config.p_mic_data = XS1_PORT_1F;
+    vfe_config.mic_config.p_mic_clock = XS1_PORT_1G;
+    vfe_config.mic_config.p_mclk = VFE_USE_XCORE_CLOCK;
+    vfe_config.mic_config.ddrclk_divider = 114 / 2; //700MHz / 114 = 6.1404MHz, -0.06% error
+    vfe_config.mic_config.sdr_clock = XS1_CLKBLK_1;
+    vfe_config.mic_config.ddr_clock = XS1_CLKBLK_2;
 
+    voice_front_end_referenceless(c_vfe, &vfe_config);
+}
 
 void mytask( void *pvParameters ){
     while(1){
@@ -109,7 +123,7 @@ void my_isr(void *data){
     portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
 
-int my_main(int tile, chanend_t xc_chan){
+int freertos(int tile){
     prvSetupHardware( tile, 0, 0, 0, 0 );
 
     xTaskCreate( mytask, "Ed's first task", portTASK_STACK_DEPTH( mytask ), &tile, 1, NULL);

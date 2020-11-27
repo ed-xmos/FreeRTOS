@@ -5,9 +5,9 @@
 #include "testing_main.h"
 
 extern "C" {
-int my_main( int tile, chanend xTile3Chan );
-void rtos_irq(int core_id, int source_id);
+int freertos(int tile);
 void bare_metal_task(chanend c_vfe);
+void vfe(chanend c_vfe);
 }
 
 
@@ -20,8 +20,9 @@ int main(void)
 		{
             chan c_vfe;
 			par {
+                vfe(c_vfe);
 				bare_metal_task(c_vfe);
-				my_main( 0, c_vfe);
+				freertos(0);
 			}
 		}
 	}
