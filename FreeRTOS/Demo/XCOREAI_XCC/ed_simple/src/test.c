@@ -121,9 +121,9 @@ void defferred_isr_task( void * pvParameter1, uint32_t ulParameter2 ){
     }
     unsigned simple_log2 = 32 - clz(peak_magnitude);
     for(int idx = 0; idx < simple_log2; idx++){
-        printchar('+');
+        rtos_printf("+");
     }
-    printchar('\n');
+    rtos_printf("\n");
 }
 
 void my_isr(void *data){
